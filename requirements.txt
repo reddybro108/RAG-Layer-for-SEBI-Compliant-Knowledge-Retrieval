@@ -1,0 +1,9 @@
+requests
+beautifulsoup4
+pymupdf
+pandas
+sentence-transformers
+faiss-cpu
+python-dotenv
+fastapi
+uvicorn
