@@ -1,0 +1,79 @@
+# ---------------------------------------------
+# Python artifacts
+# ---------------------------------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+
+# Virtual environments
+venv/
+env/
+sebienv/
+*/sebienv/
+*.env/
+
+# Cache directories
+.cache/
+.huggingface/
+.streamlit/
+
+# ---------------------------------------------
+# Project-specific artifacts
+# ---------------------------------------------
+
+# Local environment config (DO NOT TRACK SECRETS)
+.env
+.env.*
+*.env_backup
+
+# FastAPI auto reload cache
+*.reload
+
+# FAISS index + embeddings
+data_processed/*.bin
+data_processed/*.index
+data_processed/*.faiss
+data_processed/*.npy
+data_processed/*.npz
+data_processed/*.pkl
+data_processed/*.pqt
+
+# Parquet metadata
+data_processed/*.parquet
+
+# Chunked JSON data
+data_chunks/*.json
+
+# Raw PDFs (optional to ignore)
+# comment this if you WANT PDFs in the repo
+data_pdfs/*.pdf
+
+# SentenceTransformer model cache
+models/
+model_cache/
+
+# Checkpoint or temporary model folders
+*/checkpoint/
+*/checkpoints/
+
+# ---------------------------------------------
+# Streamlit artifacts
+# ---------------------------------------------
+*/.streamlit/
+*.log
+
+# ---------------------------------------------
+# VSCode / IDE
+# ---------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ---------------------------------------------
+# OS-specific
+# ---------------------------------------------
+.DS_Store
+Thumbs.db
