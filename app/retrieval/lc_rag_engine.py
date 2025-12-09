@@ -47,7 +47,7 @@ class LangChainRAGEngine:
         print(f"\n🔎 Retrieving top {self.top_k} matches for query:")
         print(f"   → {query}")
 
-        docs = self.retriever.get_relevant_documents(query)
+        docs = self.retriever.invoke(query)
 
         results = []
         for doc in docs:
