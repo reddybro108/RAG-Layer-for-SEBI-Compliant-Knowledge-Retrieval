@@ -31,7 +31,7 @@ if user_input:
     with st.spinner("Retrieving SEBI-compliant answer..."):
         payload = {
             "question": user_input,
-            "history": st.session_state.history[:-1],  # previous questions
+            "history": st.session_state.history[:-1],  # for previous questions 
         }
         res = requests.post(API_URL, json=payload)
 
