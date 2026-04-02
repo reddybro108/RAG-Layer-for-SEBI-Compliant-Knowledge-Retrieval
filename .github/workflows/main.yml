@@ -1,4 +1,4 @@
-name: Docker CI
+name: CI/CD Pipeline
 
 on:
   push:
@@ -6,10 +6,45 @@ on:
       - main
       - master
   pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
-  docker-build:
+  python-checks:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Compile source files
+        run: python -m compileall app
+
+      - name: API import smoke test
+        run: python -c "from app.api.api_server import app; print(app.title)"
+
+  docker-build:
+    needs: python-checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -22,5 +57,48 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
+          load: true
           push: false
           tags: rag-sebi:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Save Docker image as artifact
+        run: docker save rag-sebi:latest -o rag-sebi.tar
+
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rag-sebi-image
+          path: rag-sebi.tar
+          retention-days: 3
+
+  docker-smoke-test:
+    needs: docker-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download Docker image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: rag-sebi-image
+
+      - name: Load Docker image
+        run: docker load -i rag-sebi.tar
+
+      - name: Run container
+        run: |
+          docker run -d --name rag-sebi-test -p 8000:8000 rag-sebi:latest
+          sleep 8
+
+      - name: Health check
+        run: |
+          curl --retry 10 --retry-delay 3 --fail http://127.0.0.1:8000/health
+
+      - name: Print container logs on failure
+        if: failure()
+        run: docker logs rag-sebi-test
+
+      - name: Stop container
+        if: always()
+        run: docker rm -f rag-sebi-test
