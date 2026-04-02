@@ -12,10 +12,11 @@ from pathlib import Path
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 
+from app.config import disable_broken_local_proxy, get_embed_model
 
 CORPUS_PATH = Path("data/data_processed/corpus.jsonl")
 INDEX_DIR = Path("faiss_index/langchain_index")
-EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+EMBED_MODEL = get_embed_model()
 
 
 def load_corpus():
@@ -48,7 +49,8 @@ def build_langchain_faiss_index():
     texts, metadatas = load_corpus()
     print(f"Total chunks: {len(texts)}")
 
-    print("Initializing embedding model (all-MiniLM-L6-v2)...")
+    print(f"Initializing embedding model ({EMBED_MODEL})...")
+    disable_broken_local_proxy()
     try:
         embeddings = HuggingFaceEmbeddings(model_name=EMBED_MODEL)
     except Exception as exc:

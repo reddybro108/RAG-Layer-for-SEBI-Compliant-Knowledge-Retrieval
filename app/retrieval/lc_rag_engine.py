@@ -6,9 +6,10 @@ from typing import Any, Dict, List, Optional
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 
+from app.config import disable_broken_local_proxy, get_embed_model
 
 INDEX_DIR = Path("faiss_index/langchain_index")
-EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+EMBED_MODEL = get_embed_model()
 
 
 class LangChainRAGEngine:
@@ -24,6 +25,7 @@ class LangChainRAGEngine:
         print("Initializing LangChain RAG engine...")
 
         self.top_k = top_k
+        disable_broken_local_proxy()
         try:
             self.embeddings = HuggingFaceEmbeddings(model_name=EMBED_MODEL)
         except Exception as exc:
@@ -81,9 +83,10 @@ class LangChainRAGEngine:
 
         prompt = f"""
 You are a SEBI compliance assistant.
-You must answer strictly using the context provided from SEBI regulations and circulars.
+Answer strictly from the retrieved SEBI context.
+Use only the most relevant point from the provided context and do not include unrelated details.
 
-If the information is NOT present in the retrieved SEBI documents, reply:
+If the answer is not clearly supported by the context, reply exactly:
 "The referenced SEBI documents do not cover this information."
 
 Conversation History:
@@ -95,6 +98,7 @@ User Question:
 Retrieved SEBI Context:
 {context_block}
 
-Provide a concise, compliant answer with inline references to the source_file and chunk_index where relevant.
+Return 3-6 bullet points with precise compliance language and include one inline citation in this format:
+[source_file - chunk chunk_index]
 """
         return prompt
