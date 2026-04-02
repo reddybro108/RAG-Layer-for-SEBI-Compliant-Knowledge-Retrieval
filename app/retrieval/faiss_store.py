@@ -2,6 +2,8 @@ import faiss
 import pickle
 from typing import List
 
+import numpy as np
+
 class FAISSVectorStore:
     def __init__(self, index_path: str, metadata_path: str):
         self.index = faiss.read_index(index_path)

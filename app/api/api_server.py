@@ -1,8 +1,8 @@
 # api/api_server.py
 
-from fastapi import FastAPI
-from pydantic import BaseModel
 from typing import List, Optional
+from fastapi import FastAPI
+from pydantic import BaseModel, Field
 from app.generation.rag_llm import run_rag
 
 app = FastAPI(
@@ -11,9 +11,14 @@ app = FastAPI(
     version="1.0.0",
 )
 
+class ChatTurn(BaseModel):
+    user: str = Field(..., min_length=1)
+    assistant: str = Field(..., min_length=1)
+
+
 class QueryRequest(BaseModel):
     question: str
-    history: Optional[List[str]] = None
+    history: Optional[List[ChatTurn]] = None
 
 class QueryResponse(BaseModel):
     question: str
@@ -22,7 +27,8 @@ class QueryResponse(BaseModel):
 
 @app.post("/query", response_model=QueryResponse)
 def query_rag(request: QueryRequest):
-    result = run_rag(request.question, history=request.history or [])
+    history = [turn.model_dump() for turn in request.history or []]
+    result = run_rag(request.question, history=history)
     return QueryResponse(
         question=request.question,
         answer=result["answer"],

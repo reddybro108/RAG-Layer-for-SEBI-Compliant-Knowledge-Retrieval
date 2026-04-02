@@ -1,59 +1,60 @@
 # app/retrieval/lc_rag_engine.py
 
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 
 
 INDEX_DIR = Path("faiss_index/langchain_index")
+EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
 
 class LangChainRAGEngine:
-    """
-    RAG engine using LangChain's FAISS VectorStore and HuggingFace embeddings.
-    """
+    """RAG engine using LangChain's FAISS VectorStore and HuggingFace embeddings."""
 
     def __init__(self, top_k: int = 5):
         if not INDEX_DIR.exists():
             raise FileNotFoundError(
                 f"LangChain FAISS index not found at {INDEX_DIR}. "
-                "Run: python -m app.retrieval.embed_index"
+                "Run: python -m app.retrieval.lc_embed_index"
             )
 
-        print("🚀 Initializing LangChain RAG engine...")
+        print("Initializing LangChain RAG engine...")
 
         self.top_k = top_k
-        self.embeddings = HuggingFaceEmbeddings(
-            model_name="sentence-transformers/all-MiniLM-L6-v2"
-        )
-
-        # allow_dangerous_deserialization is required in newer LangChain versions
+        try:
+            self.embeddings = HuggingFaceEmbeddings(model_name=EMBED_MODEL)
+        except Exception as exc:
+            raise RuntimeError(
+                "Failed to load the embedding model. Ensure "
+                f"'{EMBED_MODEL}' is available locally or allow network access to "
+                "download it."
+            ) from exc
         self.vectorstore = FAISS.load_local(
             str(INDEX_DIR),
             embeddings=self.embeddings,
             allow_dangerous_deserialization=True,
         )
 
-        self.retriever = self.vectorstore.as_retriever(
-            search_kwargs={"k": self.top_k}
-        )
-
-        print("✅ LangChain RAG Engine Ready.")
+        print("LangChain RAG engine ready.")
 
     def retrieve(self, query: str) -> List[Dict[str, Any]]:
-        """Return top-k relevant chunks using LangChain retriever."""
-        print(f"\n🔎 Retrieving top {self.top_k} matches for query:")
-        print(f"   → {query}")
+        """Return top-k relevant chunks along with relevance scores."""
+        print(f"\nRetrieving top {self.top_k} matches for query:")
+        print(f"   -> {query}")
 
-        docs = self.retriever.invoke(query)
+        docs_and_scores = self.vectorstore.similarity_search_with_relevance_scores(
+            query,
+            k=self.top_k,
+        )
 
         results = []
-        for doc in docs:
-            meta = doc.metadata or {}
+        for doc, score in docs_and_scores:
+            meta = dict(doc.metadata or {})
             meta["text"] = doc.page_content
-            # Optional: add a dummy score, FAISS distance not directly exposed here
+            meta["score"] = float(score)
             results.append(meta)
 
         return results
@@ -69,7 +70,9 @@ class LangChainRAGEngine:
 
         if history:
             for turn in history:
-                history_text += f"User: {turn['user']}\nAssistant: {turn['assistant']}\n\n"
+                history_text += (
+                    f"User: {turn['user']}\nAssistant: {turn['assistant']}\n\n"
+                )
 
         context_block = "\n\n".join(
             f"[{c.get('source_file')} - chunk {c.get('chunk_index')}]:\n{c.get('text')}"
@@ -77,7 +80,7 @@ class LangChainRAGEngine:
         )
 
         prompt = f"""
-You are a SEBI compliance assistant. 
+You are a SEBI compliance assistant.
 You must answer strictly using the context provided from SEBI regulations and circulars.
 
 If the information is NOT present in the retrieved SEBI documents, reply:

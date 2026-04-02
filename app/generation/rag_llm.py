@@ -1,9 +1,16 @@
 # app/generation/rag_llm.py
 
-from typing import Optional, List, Dict, Any
+from functools import lru_cache
+from typing import Optional, List, Dict
 
+from app.generation.hf_llm import hf_call
 from app.retrieval.lc_rag_engine import LangChainRAGEngine
-from app.generation.groq_llm import groq_call
+
+
+@lru_cache(maxsize=1)
+def get_rag_engine() -> LangChainRAGEngine:
+    """Reuse the loaded retriever across requests."""
+    return LangChainRAGEngine(top_k=5)
 
 
 def run_rag(question: str, history: Optional[List[Dict[str, str]]] = None):
@@ -12,11 +19,11 @@ def run_rag(question: str, history: Optional[List[Dict[str, str]]] = None):
     """
     history = history or []
 
-    rag = LangChainRAGEngine(top_k=5)
+    rag = get_rag_engine()
     contexts = rag.retrieve(question)
     prompt = rag.build_prompt(question, contexts, history=history)
 
-    answer = groq_call(prompt)
+    answer = hf_call(prompt)
 
     return {
         "question": question,
